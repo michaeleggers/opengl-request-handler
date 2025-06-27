@@ -8,20 +8,20 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+static const char* HTTP_RESPONSE_STRING
+    = "HTTP/1.1 200 OK\r\n"
+      "Access-Control-Allow-Origin:*\r\n"
+      "Access-Control-Allow-Credentials:true\r\n"
+      "Access-Control-Allow-Headers: origin, content-type, accept\r\n"
+      "Strict-Transport-Security: max-age=0\r\n"
+      "insecureHTTPParser:true\r\n"
+      "Content-Type: application/json; charset=utf-8\r\n"
+      "Content-Length:17\r\n"
+      "Connection:close\r\n\r\n"
+      "{\"message\":\"42\"}\n";
+
 int main(int argc, char** argv)
 {
-    /*
-    printf("Init Curl...\n");
-    CURL* hCurl = curl_easy_init();
-    if ( !hCurl )
-    {
-        printf("Failed to init Curl! Bye.\n");
-        exit(66);
-    }
-
-    curl_easy_cleanup(hCurl);
-*/
-
     //struct addrinfo
     //{
     //  int ai_flags;			/* Input flags.  */
@@ -34,49 +34,8 @@ int main(int argc, char** argv)
     //  struct addrinfo *ai_next;	/* Pointer to next in list.  */
     //};
     //
-    const char* myIP   = "192.168.178.150";
-    const char* myPort = "50000";
-
-    /*
-    memset(&hints, 0, sizeof hints); // make sure the struct is empty
-    hints.ai_family   = AF_INET;     // Use IPv4
-    hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
-    hints.ai_flags    = 0;           //AI_PASSIVE;  // fill in my IP for me
-    if ( (status = getaddrinfo(myIP, myPort, &hints, &servinfo)) != 0 )
-    {
-        fprintf(stderr, "gai error: %s\n", gai_strerror(status));
-        exit(1);
-    }
-
-    // Print info.
-    char ipstr[ INET6_ADDRSTRLEN ];
-    for ( addrinfo* ai = servinfo; ai != nullptr; ai = ai->ai_next )
-    {
-        void*         addr;
-        const char*   ipver;
-        sockaddr_in*  ipv4;
-        sockaddr_in6* ipv6;
-
-        // get the pointer to the address itself,
-        // different fields in IPv4 and IPv6:
-        if ( ai->ai_family == AF_INET )
-        { // IPv4
-            ipv4  = (struct sockaddr_in*)ai->ai_addr;
-            addr  = &(ipv4->sin_addr);
-            ipver = "IPv4";
-        }
-        else
-        { // IPv6
-            ipv6  = (struct sockaddr_in6*)ai->ai_addr;
-            addr  = &(ipv6->sin6_addr);
-            ipver = "IPv6";
-        }
-
-        // convert the IP to a string and print it:
-        inet_ntop(ai->ai_family, addr, ipstr, sizeof ipstr);
-        printf("  %s: %s\n", ipver, ipstr);
-    }
-    */
+    const char* IP   = "192.168.178.150"; // TODO: Unused atm.
+    const int   PORT = 8081;
 
     int         status;
     addrinfo    hints;
@@ -86,7 +45,7 @@ int main(int argc, char** argv)
     addr.sin_family = AF_INET;
 
     //addr.sin_addr.s_addr = inet_addr("0.0.0.0"); // TODO: register IP at network interface
-    addr.sin_port = htons(8080);
+    addr.sin_port = htons(PORT);
 
     // Create AS socket.
     int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -113,13 +72,23 @@ int main(int argc, char** argv)
 
     while ( 1 )
     {
+        // Wait and accept for incoming connection.
         sockaddr_in client_addr;
         socklen_t   client_len = sizeof(client_addr);
         listen(sockfd, 1);
-        int  newsockfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_len);
+        int newsockfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_len);
+
+        // Handle client data.
         char clientAddrStr[ INET6_ADDRSTRLEN ];
         inet_ntop(client_addr.sin_family, &client_addr.sin_addr, clientAddrStr, sizeof(clientAddrStr));
         printf("Request received from IP: %s\n", clientAddrStr);
+
+        // Send response to client.
+        //const char* responseMsg = "Thanks for calling the OpenGL-Request-Player. Have a nice day!\n";
+        size_t responseSize = strlen(HTTP_RESPONSE_STRING);
+        printf("responseSize: %lu\n", responseSize);
+        size_t sentBytes = send(newsockfd, HTTP_RESPONSE_STRING, strlen(HTTP_RESPONSE_STRING), 0);
+        printf("sentBytes: %lu\n", sentBytes);
     }
 
     // Shutdown
