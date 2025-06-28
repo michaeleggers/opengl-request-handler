@@ -8,7 +8,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-find_package(CURL)
+#find_package(CURL)
+
+add_subdirectory(dependencies/SDL3)
 
 add_executable(curltest
     main.cpp
@@ -16,11 +18,13 @@ add_executable(curltest
 
 target_link_libraries(curltest
     #${CMAKE_DL_LIBS}
-    PUBLIC CURL::libcurl
+    #PUBLIC CURL::libcurl
     PUBLIC -lc -ldl -lpthread
+    PUBLIC SDL3::SDL3
 )
 
 # clangd compile_commands.json for lsp config
+#set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_custom_command(
   TARGET curltest POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_if_different

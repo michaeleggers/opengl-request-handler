@@ -1,14 +1,20 @@
 #include <arpa/inet.h>
-#include <curl/curl.h>
+//#include <curl/curl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
 
-static const char* HTTP_RESPONSE_STRING
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+
+static SDL_Window* g_pWindow;
+
+static const std::string HTTP_RESPONSE_STRING
     = "HTTP/1.1 200 OK\r\n"
       "Access-Control-Allow-Origin:*\r\n"
       "Access-Control-Allow-Credentials:true\r\n"
@@ -16,12 +22,30 @@ static const char* HTTP_RESPONSE_STRING
       "Strict-Transport-Security: max-age=0\r\n"
       "insecureHTTPParser:true\r\n"
       "Content-Type: application/json; charset=utf-8\r\n"
-      "Content-Length:17\r\n"
-      "Connection:close\r\n\r\n"
-      "{\"message\":\"42\"}\n";
+      "Connection:close\r\n";
+
+std::string CreateResponse(const std::string& jsonMsg)
+{
+    size_t      contentLength = jsonMsg.size();
+    std::string result        = HTTP_RESPONSE_STRING;
+    result += "Content-Length: " + std::to_string(contentLength);
+    result += "\r\n\r\n";
+    result += jsonMsg;
+
+    return result;
+}
 
 int main(int argc, char** argv)
 {
+    SDL_Init(SDL_INIT_VIDEO);
+
+    g_pWindow = SDL_CreateWindow("Hello SDL3", 800, 600, SDL_WINDOW_OPENGL);
+    if ( !g_pWindow )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create SDL3 Window!\nError-Msg: %s\n", SDL_GetError());
+        return 66;
+    }
+
     //struct addrinfo
     //{
     //  int ai_flags;			/* Input flags.  */
@@ -85,13 +109,17 @@ int main(int argc, char** argv)
 
         // Send response to client.
         //const char* responseMsg = "Thanks for calling the OpenGL-Request-Player. Have a nice day!\n";
-        size_t responseSize = strlen(HTTP_RESPONSE_STRING);
+        std::string res          = CreateResponse("{\"message\":42}\n");
+        size_t      responseSize = res.size();
         printf("responseSize: %lu\n", responseSize);
-        size_t sentBytes = send(newsockfd, HTTP_RESPONSE_STRING, strlen(HTTP_RESPONSE_STRING), 0);
+        size_t sentBytes = send(newsockfd, res.data(), responseSize, 0);
         printf("sentBytes: %lu\n", sentBytes);
     }
 
     // Shutdown
+    SDL_DestroyWindow(g_pWindow);
+    SDL_Quit();
+
     //freeaddrinfo(servinfo);
 
     return 0;
