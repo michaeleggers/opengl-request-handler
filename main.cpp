@@ -103,6 +103,8 @@ int main(int argc, char** argv)
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 480);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);
 
     g_pWindow = SDL_CreateWindowWithProperties(props);
     if ( !g_pWindow )
@@ -110,6 +112,28 @@ int main(int argc, char** argv)
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create SDL3 Window!\nError-Msg: %s\n", SDL_GetError());
         return 66;
     }
+
+    // Query available displays.
+    int            numAvailDisplays;
+    SDL_DisplayID* displayIDs = SDL_GetDisplays(&numAvailDisplays);
+    printf("Displays found:\n");
+    SDL_DisplayID* currentDisplay = displayIDs;
+    for ( int i = 0; i < numAvailDisplays; i++ )
+    {
+        const SDL_DisplayMode* displayMode = SDL_GetCurrentDisplayMode(*currentDisplay);
+        printf("%d: %s\n\tRefresh Rate: %f\n\tSize: %d, %d\n",
+               i,
+               SDL_GetDisplayName(*currentDisplay),
+               displayMode->refresh_rate,
+               displayMode->w,
+               displayMode->h);
+        currentDisplay++;
+    }
+
+    // Set window size to size of Desktop.
+    const SDL_DisplayMode* displayMode
+        = SDL_GetCurrentDisplayMode(*displayIDs); // TODO: might not be the display we want.
+    SDL_SetWindowSize(g_pWindow, displayMode->w, displayMode->h);
 
     SDL_GLContext context = SDL_GL_CreateContext(g_pWindow);
     int           version = gladLoadGL();
@@ -203,7 +227,7 @@ int main(int argc, char** argv)
         if ( !g_EventQueue.empty() )
         {
             g_EventQueue.pop();
-            glClearColor(RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), 1.0f);
+            glClearColor(RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), 0.5f);
         }
 
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
