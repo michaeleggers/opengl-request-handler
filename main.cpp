@@ -2,6 +2,7 @@
 //#include <curl/curl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <queue>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,9 +16,19 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
 
-static int           g_fdServerSocket;
-static SDL_Window*   g_pWindow;
-static SDL_GLContext g_glContext;
+static int                     g_fdServerSocket;
+static SDL_Window*             g_pWindow;
+static SDL_GLContext           g_glContext;
+static SDL_Thread*             g_pRequestHandlerThread;
+static std::queue<std::string> g_EventQueue;
+
+static float RandBetween(float min, float max)
+{
+    float range = max - min;
+    float rand  = float(random()) / float(RAND_MAX);
+
+    return min + range * rand;
+}
 
 static const std::string HTTP_RESPONSE_STRING
     = "HTTP/1.1 200 OK\r\n"
@@ -40,13 +51,15 @@ std::string CreateResponse(const std::string& jsonMsg)
     return result;
 }
 
-void HandleRequests()
+static int HandleRequests(void* ptr)
 {
     while ( 1 )
     {
-        // Wait and accept for incoming connection.
+        // New client data
         sockaddr_in client_addr;
         socklen_t   client_len = sizeof(client_addr);
+
+        // listen and accept
         listen(g_fdServerSocket, 1);
         int newsockfd = accept(g_fdServerSocket, (struct sockaddr*)&client_addr, &client_len);
 
@@ -62,6 +75,9 @@ void HandleRequests()
         printf("responseSize: %lu\n", responseSize);
         size_t sentBytes = send(newsockfd, res.data(), responseSize, 0);
         printf("sentBytes: %lu\n", sentBytes);
+
+        // Add even to queue
+        g_EventQueue.push({ "event-message" });
     }
 }
 
@@ -148,6 +164,19 @@ int main(int argc, char** argv)
     inet_ntop(addr.sin_family, &addr.sin_addr, ipstr, sizeof(ipstr));
     printf("🦭 Socket created. IP: %s\n", ipstr);
 
+    // Setup the request handler thread and start running
+    g_pRequestHandlerThread = SDL_CreateThread(HandleRequests, "HandleRequests", (void*)NULL);
+    int threadReturnValue;
+    if ( NULL == g_pRequestHandlerThread )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateThread failed: %s", SDL_GetError());
+    }
+    else
+    {
+        SDL_DetachThread(g_pRequestHandlerThread);
+        //SDL_Log("Thread returned value: %d", threadReturnValue);
+    }
+
     // Run event loop
     bool done = false;
     while ( !done )
@@ -159,11 +188,24 @@ int main(int argc, char** argv)
             {
                 done = true;
             }
+
+            if ( event.type == SDL_EVENT_KEY_DOWN )
+            {
+                if ( event.key.key == SDLK_ESCAPE )
+                {
+                    done = true;
+                }
+            }
         }
 
         // Do game logic, present a frame, etc.
 
-        glClearColor(0.3f, 0.3f, 0.7f, 1.0f);
+        if ( !g_EventQueue.empty() )
+        {
+            g_EventQueue.pop();
+            glClearColor(RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), 1.0f);
+        }
+
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
         SDL_GL_SwapWindow(g_pWindow);
