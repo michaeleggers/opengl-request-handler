@@ -51,6 +51,11 @@ std::string CreateResponse(const std::string& jsonMsg)
     return result;
 }
 
+static SDL_HitTestResult WindowHittestCallback(SDL_Window* win, const SDL_Point* area, void* data)
+{
+    return SDL_HITTEST_DRAGGABLE; /**< Region is normal. No special properties. */
+}
+
 static int HandleRequests(void* ptr)
 {
     while ( 1 )
@@ -113,6 +118,14 @@ int main(int argc, char** argv)
         return 66;
     }
 
+#if 0
+    if ( !SDL_SetWindowFocusable(g_pWindow, false) )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not set Window to not focusable!\nError-Msg: %s\n", SDL_GetError());
+        return 66;
+    }
+#endif
+
     // Query available displays.
     int            numAvailDisplays;
     SDL_DisplayID* displayIDs = SDL_GetDisplays(&numAvailDisplays);
@@ -137,6 +150,16 @@ int main(int argc, char** argv)
 
     SDL_GLContext context = SDL_GL_CreateContext(g_pWindow);
     int           version = gladLoadGL();
+
+#if 1
+    // Set window hittest callback
+    if ( !SDL_SetWindowHitTest(g_pWindow, WindowHittestCallback, nullptr) )
+    {
+        SDL_LogError(
+            SDL_LOG_CATEGORY_ERROR, "Could not set Hittest Callback for Window!\nError-Msg: %s\n", SDL_GetError());
+        return 66;
+    }
+#endif
 
     g_glContext = SDL_GL_CreateContext(g_pWindow);
     if ( !g_glContext )
@@ -201,6 +224,9 @@ int main(int argc, char** argv)
         //SDL_Log("Thread returned value: %d", threadReturnValue);
     }
 
+    // Init color
+    glClearColor(1.0f, 0.95f, 0.0f, 0.5f);
+
     // Run event loop
     bool done = false;
     while ( !done )
@@ -219,6 +245,17 @@ int main(int argc, char** argv)
                 {
                     done = true;
                 }
+            }
+
+            if ( event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP
+                 || event.type == SDL_EVENT_MOUSE_MOTION || event.type )
+            {
+                //continue;
+            }
+
+            if ( event.type == SDL_EVENT_WINDOW_HIT_TEST )
+            {
+                //printf("SDL Window Hittest was not normal!\n");
             }
         }
 
