@@ -14,6 +14,7 @@ add_subdirectory(dependencies/SDL3)
 
 add_executable(curltest
     main.cpp
+    dependencies/glad/src/glad.c
 )
 
 target_link_libraries(curltest
@@ -21,6 +22,10 @@ target_link_libraries(curltest
     #PUBLIC CURL::libcurl
     PUBLIC -lc -ldl -lpthread
     PUBLIC SDL3::SDL3
+)
+
+target_include_directories(curltest PUBLIC
+    dependencies/glad/include/
 )
 
 # clangd compile_commands.json for lsp config

@@ -9,10 +9,15 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <glad/glad.h>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_video.h>
 
-static SDL_Window* g_pWindow;
+static int           g_fdServerSocket;
+static SDL_Window*   g_pWindow;
+static SDL_GLContext g_glContext;
 
 static const std::string HTTP_RESPONSE_STRING
     = "HTTP/1.1 200 OK\r\n"
@@ -35,72 +40,15 @@ std::string CreateResponse(const std::string& jsonMsg)
     return result;
 }
 
-int main(int argc, char** argv)
+void HandleRequests()
 {
-    SDL_Init(SDL_INIT_VIDEO);
-
-    g_pWindow = SDL_CreateWindow("Hello SDL3", 800, 600, SDL_WINDOW_OPENGL);
-    if ( !g_pWindow )
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create SDL3 Window!\nError-Msg: %s\n", SDL_GetError());
-        return 66;
-    }
-
-    //struct addrinfo
-    //{
-    //  int ai_flags;			/* Input flags.  */
-    //  int ai_family;		/* Protocol family for socket.  */
-    //  int ai_socktype;		/* Socket type.  */
-    //  int ai_protocol;		/* Protocol for socket.  */
-    //  socklen_t ai_addrlen;		/* Length of socket address.  */
-    //  struct sockaddr *ai_addr;	/* Socket address for socket.  */
-    //  char *ai_canonname;		/* Canonical name for service location.  */
-    //  struct addrinfo *ai_next;	/* Pointer to next in list.  */
-    //};
-    //
-    const char* IP   = "192.168.178.150"; // TODO: Unused atm.
-    const int   PORT = 8081;
-
-    int         status;
-    addrinfo    hints;
-    addrinfo*   servinfo; // will point to the results
-    sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-
-    //addr.sin_addr.s_addr = inet_addr("0.0.0.0"); // TODO: register IP at network interface
-    addr.sin_port = htons(PORT);
-
-    // Create AS socket.
-    int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if ( sockfd < 0 )
-    {
-        printf("Failed to create socket!\n");
-        exit(66);
-    }
-
-    // lose the pesky "Address already in use" error message
-    int yes = 1;
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-
-    // bind it to the port we passed in to getaddrinfo():
-    if ( bind(sockfd, (sockaddr*)&addr, sizeof(addr)) < 0 )
-    {
-        printf("Failed to bind socket to port %d\n", ntohs(addr.sin_port));
-        exit(66);
-    }
-
-    char ipstr[ INET6_ADDRSTRLEN ];
-    inet_ntop(addr.sin_family, &addr.sin_addr, ipstr, sizeof(ipstr));
-    printf("Socket created. IP: %s\n", ipstr);
-
     while ( 1 )
     {
         // Wait and accept for incoming connection.
         sockaddr_in client_addr;
         socklen_t   client_len = sizeof(client_addr);
-        listen(sockfd, 1);
-        int newsockfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_len);
+        listen(g_fdServerSocket, 1);
+        int newsockfd = accept(g_fdServerSocket, (struct sockaddr*)&client_addr, &client_len);
 
         // Handle client data.
         char clientAddrStr[ INET6_ADDRSTRLEN ];
@@ -115,8 +63,116 @@ int main(int argc, char** argv)
         size_t sentBytes = send(newsockfd, res.data(), responseSize, 0);
         printf("sentBytes: %lu\n", sentBytes);
     }
+}
+
+int main(int argc, char** argv)
+{
+    SDL_Init(SDL_INIT_VIDEO);
+
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
+    SDL_PropertiesID props = SDL_CreateProperties();
+    if ( props == 0 )
+    {
+        SDL_Log("Unable to create properties: %s", SDL_GetError());
+        return 0;
+    }
+
+    // Assume the following calls succeed
+    SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "My COOL OPENGL WINDOW!!!");
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, 640);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 480);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
+
+    g_pWindow = SDL_CreateWindowWithProperties(props);
+    if ( !g_pWindow )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create SDL3 Window!\nError-Msg: %s\n", SDL_GetError());
+        return 66;
+    }
+
+    SDL_GLContext context = SDL_GL_CreateContext(g_pWindow);
+    int           version = gladLoadGL();
+
+    g_glContext = SDL_GL_CreateContext(g_pWindow);
+    if ( !g_glContext )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create SDL3 OpenGL Context\nError-Msg: %s\n", SDL_GetError());
+        return 66;
+    }
+
+    // Print GL Version
+    const unsigned char* sGLVersion = glGetString(GL_VERSION);
+    printf("Got OpenGL Version: %s\n", sGLVersion);
+    const unsigned char* sGLRenderer = glGetString(GL_RENDERER);
+    printf("Got OpenGL Renderer: %s\n", sGLRenderer);
+
+    // Setup this server.
+    const char* IP   = "192.168.178.150"; // TODO: Unused atm.
+    const int   PORT = 8081;
+
+    int         status;
+    addrinfo    hints;
+    addrinfo*   servinfo; // will point to the results
+    sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+
+    //addr.sin_addr.s_addr = inet_addr("0.0.0.0"); // TODO: register IP at network interface
+    addr.sin_port = htons(PORT);
+
+    // Create as socket.
+    g_fdServerSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if ( g_fdServerSocket < 0 )
+    {
+        printf("Failed to create socket!\n");
+        exit(66);
+    }
+
+    // lose the pesky "Address already in use" error message
+    int yes = 1;
+    setsockopt(g_fdServerSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+
+    // bind it to the port we passed in to getaddrinfo():
+    if ( bind(g_fdServerSocket, (sockaddr*)&addr, sizeof(addr)) < 0 )
+    {
+        printf("Failed to bind socket to port %d\n", ntohs(addr.sin_port));
+        exit(66);
+    }
+
+    char ipstr[ INET6_ADDRSTRLEN ];
+    inet_ntop(addr.sin_family, &addr.sin_addr, ipstr, sizeof(ipstr));
+    printf("🦭 Socket created. IP: %s\n", ipstr);
+
+    // Run event loop
+    bool done = false;
+    while ( !done )
+    {
+        SDL_Event event;
+        while ( SDL_PollEvent(&event) )
+        {
+            if ( event.type == SDL_EVENT_QUIT )
+            {
+                done = true;
+            }
+        }
+
+        // Do game logic, present a frame, etc.
+
+        glClearColor(0.3f, 0.3f, 0.7f, 1.0f);
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+        SDL_GL_SwapWindow(g_pWindow);
+    }
+
+    //HandleRequests();
 
     // Shutdown
+    SDL_GL_DestroyContext(g_glContext);
     SDL_DestroyWindow(g_pWindow);
     SDL_Quit();
 
