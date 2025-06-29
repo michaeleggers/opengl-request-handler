@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 //#include <curl/curl.h>
+#include <math.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <queue>
@@ -150,7 +151,7 @@ int main(int argc, char** argv)
     printf("Display size: %d, %d\n", displayMode->w, displayMode->h);
     SDL_SetWindowSize(g_pWindow, displayMode->w, displayMode->h);
     SDL_SetWindowPosition(g_pWindow, 0, 0);
-    SDL_SetWindowFullscreen(g_pWindow, true);
+    //SDL_SetWindowFullscreen(g_pWindow, true);
 
     SDL_GLContext context = SDL_GL_CreateContext(g_pWindow);
     int           version = gladLoadGL();
@@ -232,9 +233,10 @@ int main(int argc, char** argv)
     glClearColor(1.0f, 0.95f, 0.0f, 0.5f);
 
     // Setup timers
-    uint64_t timeStart       = SDL_GetPerformanceCounter();
-    uint64_t countsPerSecond = SDL_GetPerformanceFrequency();
-    double   frameTimeSec    = 0.0f;
+    uint64_t timeStart         = SDL_GetPerformanceCounter();
+    uint64_t countsPerSecond   = SDL_GetPerformanceFrequency();
+    double   frameTimeSec      = 0.0f;
+    double   totalFrameTimeSec = 0.0f;
 
     // Run event loop
     bool done = false;
@@ -271,6 +273,10 @@ int main(int argc, char** argv)
         }
 
         // Do game logic, present a frame, etc.
+        float r = 0.5f * sinf(totalFrameTimeSec) + 0.5f;
+        float g = 0.5f * cosf(totalFrameTimeSec) + 0.5f;
+        float b = 0.5f * cosf(totalFrameTimeSec + 3.14f) + 0.5f;
+        glClearColor(r, g, b, 0.1f);
 
         if ( !g_EventQueue.empty() )
         {
@@ -285,6 +291,7 @@ int main(int argc, char** argv)
         uint64_t timeEnd   = SDL_GetPerformanceCounter();
         uint64_t frameTime = timeEnd - timeStart;
         frameTimeSec       = double(frameTime) / double(countsPerSecond);
+        totalFrameTimeSec += frameTimeSec;
     }
 
     //HandleRequests();
