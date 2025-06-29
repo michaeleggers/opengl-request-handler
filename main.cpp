@@ -110,6 +110,7 @@ int main(int argc, char** argv)
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
 
     g_pWindow = SDL_CreateWindowWithProperties(props);
     if ( !g_pWindow )
@@ -146,7 +147,10 @@ int main(int argc, char** argv)
     // Set window size to size of Desktop.
     const SDL_DisplayMode* displayMode
         = SDL_GetCurrentDisplayMode(*displayIDs); // TODO: might not be the display we want.
+    printf("Display size: %d, %d\n", displayMode->w, displayMode->h);
     SDL_SetWindowSize(g_pWindow, displayMode->w, displayMode->h);
+    SDL_SetWindowPosition(g_pWindow, 0, 0);
+    SDL_SetWindowFullscreen(g_pWindow, true);
 
     SDL_GLContext context = SDL_GL_CreateContext(g_pWindow);
     int           version = gladLoadGL();
@@ -227,10 +231,17 @@ int main(int argc, char** argv)
     // Init color
     glClearColor(1.0f, 0.95f, 0.0f, 0.5f);
 
+    // Setup timers
+    uint64_t timeStart       = SDL_GetPerformanceCounter();
+    uint64_t countsPerSecond = SDL_GetPerformanceFrequency();
+    double   frameTimeSec    = 0.0f;
+
     // Run event loop
     bool done = false;
     while ( !done )
     {
+        timeStart = SDL_GetPerformanceCounter();
+
         SDL_Event event;
         while ( SDL_PollEvent(&event) )
         {
@@ -270,6 +281,10 @@ int main(int argc, char** argv)
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
         SDL_GL_SwapWindow(g_pWindow);
+
+        uint64_t timeEnd   = SDL_GetPerformanceCounter();
+        uint64_t frameTime = timeEnd - timeStart;
+        frameTimeSec       = double(frameTime) / double(countsPerSecond);
     }
 
     //HandleRequests();
