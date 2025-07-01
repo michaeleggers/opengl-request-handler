@@ -20,7 +20,7 @@ add_executable(curltest
 target_link_libraries(curltest
     #${CMAKE_DL_LIBS}
     #PUBLIC CURL::libcurl
-    PUBLIC -lc -ldl -lpthread
+    PUBLIC -lc -ldl -lpthread -lwayland-client
     PUBLIC SDL3::SDL3
 )
 

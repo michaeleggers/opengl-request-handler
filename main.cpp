@@ -16,6 +16,8 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_video.h>
+#include <wayland-client-protocol.h>
+#include <wayland-client.h>
 
 static int                     g_fdServerSocket;
 static SDL_Window*             g_pWindow;
@@ -87,6 +89,32 @@ static int HandleRequests(void* ptr)
     }
 }
 
+struct WaylandState
+{
+    wl_compositor* compositor;
+};
+
+static void
+registry_handle_global(void* data, wl_registry* wl_registry, uint32_t name, const char* interface, uint32_t version)
+{
+    printf("Running global registry handler\n");
+    WaylandState* state = (WaylandState*)data;
+    if ( strcmp(interface, "wl_compositor") == 0 )
+    {
+        state->compositor = (wl_compositor*)wl_registry_bind(wl_registry, name, &wl_compositor_interface, 4);
+    }
+}
+
+static void registry_handle_global_remove(void* data, struct wl_registry* registry, uint32_t name)
+{
+    // This space deliberately left blank
+}
+
+static const wl_registry_listener g_registry_listener = {
+    .global        = registry_handle_global,
+    .global_remove = registry_handle_global_remove,
+};
+
 int main(int argc, char** argv)
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -119,6 +147,35 @@ int main(int argc, char** argv)
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create SDL3 Window!\nError-Msg: %s\n", SDL_GetError());
         return 66;
     }
+
+    if ( SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0 )
+    {
+
+        wl_surface* waylandSurface = (wl_surface*)SDL_GetPointerProperty(
+            SDL_GetWindowProperties(g_pWindow), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
+        wl_display* waylandDisplay = (wl_display*)SDL_GetPointerProperty(
+            SDL_GetWindowProperties(g_pWindow), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
+
+        wl_registry* registry = wl_display_get_registry(waylandDisplay);
+        printf("wl_registry pointer: %p\n", registry);
+
+        WaylandState waylandState{};
+        wl_registry_add_listener(registry, &g_registry_listener, &waylandState);
+        wl_display_roundtrip(waylandDisplay);
+        printf("wl_registry_add_listener done\n");
+        printf("wl_compositor pointer: %p\n", waylandState.compositor);
+
+        wl_region* waylandRegion = wl_compositor_create_region(waylandState.compositor);
+        wl_region_add(waylandRegion, 0, 0, 0, 0);
+        wl_surface_set_input_region(waylandSurface, waylandRegion);
+        printf("Done with wayland crap\n");
+    }
+    else
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Only wayland supported. Sorry!\n");
+    }
+    //wl_region  waylandRegion{};
+    //wl_surface_set_input_region(&waylandSurface, waylandRegion);
 
 #if 0
     if ( !SDL_SetWindowFocusable(g_pWindow, false) )
