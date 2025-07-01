@@ -139,7 +139,7 @@ int main(int argc, char** argv)
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);
-    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, false);
 
     g_pWindow = SDL_CreateWindowWithProperties(props);
     if ( !g_pWindow )
@@ -174,8 +174,13 @@ int main(int argc, char** argv)
     {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Only wayland supported. Sorry!\n");
     }
-    //wl_region  waylandRegion{};
-    //wl_surface_set_input_region(&waylandSurface, waylandRegion);
+
+    if ( !SDL_SetWindowAlwaysOnTop(g_pWindow, true) )
+    {
+        SDL_LogError(
+            SDL_LOG_CATEGORY_ERROR, "Could not set Window to always on top again!\nError-Msg: %s\n", SDL_GetError());
+        return 66;
+    }
 
 #if 0
     if ( !SDL_SetWindowFocusable(g_pWindow, false) )
