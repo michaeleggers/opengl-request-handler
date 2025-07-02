@@ -11,6 +11,7 @@
 - [x] Move request-handling into its own thread.
 - [x] Experiment with wayland directly to make window non-clickable (failed, but was fun).
 - [x] Load GLSL code from disk and compile to SPIR-V via glslang.
+- [x] Create uniform buffer to animate shader with CPU-side data.
 - [ ] Use shader program to do some fun stuff when request comes in.
 - [ ] Load external models (OBJ).
 
