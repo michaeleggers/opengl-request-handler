@@ -22,12 +22,13 @@ GLSL_IncludeLocalCB(void* ctx, const char* header_name, const char* includer_nam
 {
     glsl_include_result_t* result = (glsl_include_result_t*)malloc(sizeof(glsl_include_result_t));
 
-    std::string headerFilePath = g_BasePath + header_name;
+    std::string headerFilePath = g_BasePath + "/shaders/" + header_name;
     HKD_File    file{};
     hkd_read_file(headerFilePath.c_str(), &file);
 
     result->header_name = header_name;
-    result->header_data = (char*)malloc(file.size);
+    result->header_data = (char*)malloc(file.size + 1);
+    memset((void*)(result->header_data), 0, file.size + 1);
     memcpy((char*)(result->header_data), (char*)file.data, file.size);
     result->header_length = (size_t)file.size;
 

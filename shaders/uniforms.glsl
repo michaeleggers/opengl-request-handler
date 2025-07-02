@@ -1,0 +1,4 @@
+
+struct UniformBufferStruct {
+    float runningTimeMs;
+};

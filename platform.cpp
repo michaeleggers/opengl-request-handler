@@ -78,6 +78,7 @@ std::string hkd_GetExePath(void)
 }
 #endif
 
+// FIX: Return filesize *including* null-byte (and comment it that it does so).
 HKD_FileStatus hkd_read_file(char const* filename, HKD_File* out_File)
 {
     FILE* file = 0;

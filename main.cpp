@@ -29,6 +29,11 @@ static SDL_Thread*             g_pRequestHandlerThread;
 static std::queue<std::string> g_EventQueue;
 std::string                    g_BasePath;
 
+struct Uniforms
+{
+    float runningTimeMs;
+};
+
 static float RandBetween(float min, float max)
 {
     float range = max - min;
@@ -318,22 +323,32 @@ int main(int argc, char** argv)
     // Create buffers
     GLuint VAO;
     glCreateVertexArrays(1, &VAO);
-    //glEnableVertexAttribArray(VAO);
-    //GLuint VBO;
-    //glCreateBuffers(1, &VBO);
-    //glNamedBufferData(VBO, 1000, nullptr, GL_DYNAMIC_DRAW);
 
-    //// Bind the buffer to a binding point (binding index = 0 here)
-    //glVertexArrayVertexBuffer(VAO, 0, VBO, 0, sizeof(float) * 3);
+    // NOTE: Keep this in place as reference as we might want to use VBOs later.
+    {
+        //glEnableVertexAttribArray(VAO);
+        //GLuint VBO;
+        //glCreateBuffers(1, &VBO);
+        //glNamedBufferData(VBO, 1000, nullptr, GL_DYNAMIC_DRAW);
 
-    //// Define attribute format
-    //glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, 0);
+        //// Bind the buffer to a binding point (binding index = 0 here)
+        //glVertexArrayVertexBuffer(VAO, 0, VBO, 0, sizeof(float) * 3);
 
-    //// Link attribute index 0 to binding index 0
-    //glVertexArrayAttribBinding(VAO, 0, 0);
+        //// Define attribute format
+        //glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, 0);
 
-    //// Enable the attribute
-    //glEnableVertexArrayAttrib(VAO, 0);
+        //// Link attribute index 0 to binding index 0
+        //glVertexArrayAttribBinding(VAO, 0, 0);
+
+        //// Enable the attribute
+        //glEnableVertexArrayAttrib(VAO, 0);
+    }
+
+    // Create uniform buffer
+    Uniforms uniforms{};
+    GLuint   uniformBuffer;
+    glCreateBuffers(1, &uniformBuffer);
+    glNamedBufferData(uniformBuffer, sizeof(Uniforms), &uniforms, GL_DYNAMIC_DRAW);
 
     // Init color
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -349,11 +364,17 @@ int main(int argc, char** argv)
     uint64_t countsPerSecond   = SDL_GetPerformanceFrequency();
     double   frameTimeSec      = 0.0f;
     double   totalFrameTimeSec = 0.0f;
+    uint64_t frameTime         = 0;
+    uint64_t timeEnd           = 0;
 
     // Run event loop
     bool done = false;
     while ( !done )
     {
+        frameTime    = timeEnd - timeStart;
+        frameTimeSec = double(frameTime) / double(countsPerSecond);
+        totalFrameTimeSec += frameTimeSec;
+
         timeStart = SDL_GetPerformanceCounter();
 
         SDL_Event event;
@@ -387,11 +408,16 @@ int main(int argc, char** argv)
         // Do game logic, present a frame, etc.
         //
 
+        // Update uniforms
+        //uniforms.runnimTimeMs += frameTime;
+        glNamedBufferSubData(uniformBuffer, 0, sizeof(Uniforms), &uniforms);
+
         glViewport(0, 0, displayMode->w, displayMode->h);
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
         basicShader.Use();
         glBindVertexArray(VAO);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniformBuffer);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
 
@@ -403,10 +429,7 @@ int main(int argc, char** argv)
 
         SDL_GL_SwapWindow(g_pWindow);
 
-        uint64_t timeEnd   = SDL_GetPerformanceCounter();
-        uint64_t frameTime = timeEnd - timeStart;
-        frameTimeSec       = double(frameTime) / double(countsPerSecond);
-        totalFrameTimeSec += frameTimeSec;
+        timeEnd = SDL_GetPerformanceCounter();
     }
 
     //HandleRequests();
