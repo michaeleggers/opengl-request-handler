@@ -164,9 +164,14 @@ bool Shader::Load(const std::string& vertName, const std::string& fragName, uint
     glSpecializeShader(m_FragmentShader, "main", 0, NULL, NULL);
 
     // TODO: Should only be done if explicitly requested, I guess.
-    hkd_write_file((vertName + ".spv").c_str(), m_VertexShaderSPIRV.words, sizeof(uint32_t), m_VertexShaderSPIRV.size);
-    hkd_write_file(
-        (fragName + ".spv").c_str(), m_FragmentShaderSPIRV.words, sizeof(uint32_t), m_FragmentShaderSPIRV.size);
+    hkd_write_file((g_BasePath + vertName + ".spv").c_str(),
+                   m_VertexShaderSPIRV.words,
+                   sizeof(uint32_t),
+                   m_VertexShaderSPIRV.size);
+    hkd_write_file((g_BasePath + fragName + ".spv").c_str(),
+                   m_FragmentShaderSPIRV.words,
+                   sizeof(uint32_t),
+                   m_FragmentShaderSPIRV.size);
 
     /*
     if ( !CompileShader(vertName, GL_VERTEX_SHADER, m_VertexShader)
