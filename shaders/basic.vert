@@ -6,6 +6,7 @@ vec3 positions[6] = vec3[6](
     );
 
 void main() {
-    vec3 scaledPos = 0.5f * positions[gl_VertexIndex];
+    float scale = 1.0f;
+    vec3 scaledPos = scale * positions[gl_VertexIndex];
     gl_Position = vec4(scaledPos, 1.0f);
 }

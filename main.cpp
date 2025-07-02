@@ -32,6 +32,7 @@ std::string                    g_BasePath;
 struct Uniforms
 {
     float runningTimeMs;
+    float runningTimeSec;
 };
 
 static float RandBetween(float min, float max)
@@ -147,7 +148,7 @@ int main(int argc, char** argv)
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, 640);
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 480);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
-    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
     if ( !SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true) )
     {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR,
@@ -360,7 +361,7 @@ int main(int argc, char** argv)
     //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Setup timers
-    uint64_t timeStart         = SDL_GetPerformanceCounter();
+    uint64_t timeStart         = 0;
     uint64_t countsPerSecond   = SDL_GetPerformanceFrequency();
     double   frameTimeSec      = 0.0f;
     double   totalFrameTimeSec = 0.0f;
@@ -374,6 +375,7 @@ int main(int argc, char** argv)
         frameTime    = timeEnd - timeStart;
         frameTimeSec = double(frameTime) / double(countsPerSecond);
         totalFrameTimeSec += frameTimeSec;
+        float totalFrameTimeMs = float(totalFrameTimeSec * 1000.0f);
 
         timeStart = SDL_GetPerformanceCounter();
 
@@ -409,7 +411,8 @@ int main(int argc, char** argv)
         //
 
         // Update uniforms
-        //uniforms.runnimTimeMs += frameTime;
+        uniforms.runningTimeMs  = totalFrameTimeMs;
+        uniforms.runningTimeSec = totalFrameTimeSec;
         glNamedBufferSubData(uniformBuffer, 0, sizeof(Uniforms), &uniforms);
 
         glViewport(0, 0, displayMode->w, displayMode->h);
