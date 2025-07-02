@@ -23,6 +23,7 @@ class Shader
 
     bool Load(const std::string& vertName, const std::string& fragName, uint32_t shaderFeatureBits);
     bool IsValidProgram();
+    void Use();
 
   private:
     GLuint m_ShaderProgram;

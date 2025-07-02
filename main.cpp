@@ -125,7 +125,9 @@ int main(int argc, char** argv)
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
     SDL_PropertiesID props = SDL_CreateProperties();
     if ( props == 0 )
@@ -140,10 +142,9 @@ int main(int argc, char** argv)
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, 640);
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 480);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
-    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);
-    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, false);
 
     g_pWindow = SDL_CreateWindowWithProperties(props);
     if ( !g_pWindow )
@@ -152,6 +153,7 @@ int main(int argc, char** argv)
         return 66;
     }
 
+#if 0
     if ( SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0 )
     {
 
@@ -172,19 +174,13 @@ int main(int argc, char** argv)
         wl_region* waylandRegion = wl_compositor_create_region(waylandState.compositor);
         wl_region_add(waylandRegion, 0, 0, 0, 0);
         wl_surface_set_input_region(waylandSurface, waylandRegion);
-        printf("Done with wayland crap\n");
+        printf("Done with wayland crap\n"); 
     }
     else
     {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Only wayland supported. Sorry!\n");
     }
-
-    if ( !SDL_SetWindowAlwaysOnTop(g_pWindow, true) )
-    {
-        SDL_LogError(
-            SDL_LOG_CATEGORY_ERROR, "Could not set Window to always on top again!\nError-Msg: %s\n", SDL_GetError());
-        return 66;
-    }
+#endif
 
 #if 0
     if ( !SDL_SetWindowFocusable(g_pWindow, false) )
@@ -314,8 +310,34 @@ int main(int argc, char** argv)
         exit(66);
     }
 
+    // Create buffers
+    GLuint VAO;
+    glCreateVertexArrays(1, &VAO);
+    //glEnableVertexAttribArray(VAO);
+    //GLuint VBO;
+    //glCreateBuffers(1, &VBO);
+    //glNamedBufferData(VBO, 1000, nullptr, GL_DYNAMIC_DRAW);
+
+    //// Bind the buffer to a binding point (binding index = 0 here)
+    //glVertexArrayVertexBuffer(VAO, 0, VBO, 0, sizeof(float) * 3);
+
+    //// Define attribute format
+    //glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, 0);
+
+    //// Link attribute index 0 to binding index 0
+    //glVertexArrayAttribBinding(VAO, 0, 0);
+
+    //// Enable the attribute
+    //glEnableVertexArrayAttrib(VAO, 0);
+
     // Init color
-    glClearColor(1.0f, 0.95f, 0.0f, 0.5f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glFrontFace(GL_CCW);
+    glDisable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glDepthFunc(GL_LESS);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Setup timers
     uint64_t timeStart         = SDL_GetPerformanceCounter();
@@ -358,18 +380,21 @@ int main(int argc, char** argv)
         }
 
         // Do game logic, present a frame, etc.
-        float r = 0.5f * sinf(totalFrameTimeSec) + 0.5f;
-        float g = 0.5f * cosf(totalFrameTimeSec) + 0.5f;
-        float b = 0.5f * cosf(totalFrameTimeSec + 3.14f) + 0.5f;
-        glClearColor(r, g, b, 0.1f);
+        //
+
+        glViewport(0, 0, displayMode->w, displayMode->h);
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+        basicShader.Use();
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
 
         if ( !g_EventQueue.empty() )
         {
             g_EventQueue.pop();
-            glClearColor(RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), 0.5f);
+            //glClearColor(RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), 0.5f);
         }
-
-        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
         SDL_GL_SwapWindow(g_pWindow);
 

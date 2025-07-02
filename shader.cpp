@@ -208,3 +208,8 @@ bool Shader::IsValidProgram()
 
     return true;
 }
+
+void Shader::Use()
+{
+    glUseProgram(m_ShaderProgram);
+}
