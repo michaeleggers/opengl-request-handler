@@ -24,15 +24,13 @@ Create Makefile (or whatever you need) via CMake. Then build the program. It wil
 
 ## Starting the program
 
-The program expects you to either have the `shaders` directory:
+The program expects you to either have the `shaders` next to the executable directory:
 
 ```bash
 cp -r shaders bin/
 ```
 
-**or**
-next to the executable or you
-pass the base-directory as a commandline-argument eg:
+**or** you pass the base-directory as a commandline-argument eg:
 
 ```bash
 ./curltest /home/username/repos/opengl-request-handler/
