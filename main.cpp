@@ -31,8 +31,10 @@ std::string                    g_BasePath;
 
 struct Uniforms
 {
-    float runningTimeMs;
-    float runningTimeSec;
+    float    runningTimeMs;
+    float    runningTimeSec;
+    uint32_t windowWidth;
+    uint32_t windowHeight;
 };
 
 static float RandBetween(float min, float max)
@@ -409,10 +411,17 @@ int main(int argc, char** argv)
 
         // Do game logic, present a frame, etc.
         //
+        if ( !g_EventQueue.empty() )
+        {
+            g_EventQueue.pop();
+            totalFrameTimeSec = 0.0f;
+        }
 
         // Update uniforms
         uniforms.runningTimeMs  = totalFrameTimeMs;
         uniforms.runningTimeSec = totalFrameTimeSec;
+        uniforms.windowWidth    = displayMode->w;
+        uniforms.windowHeight   = displayMode->h;
         glNamedBufferSubData(uniformBuffer, 0, sizeof(Uniforms), &uniforms);
 
         glViewport(0, 0, displayMode->w, displayMode->h);
@@ -423,12 +432,6 @@ int main(int argc, char** argv)
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniformBuffer);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
-
-        if ( !g_EventQueue.empty() )
-        {
-            g_EventQueue.pop();
-            //glClearColor(RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), 0.5f);
-        }
 
         SDL_GL_SwapWindow(g_pWindow);
 
