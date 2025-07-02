@@ -143,7 +143,12 @@ int main(int argc, char** argv)
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 480);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, false);
-    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true);
+    if ( !SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true) )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR,
+                     "Failed to apply SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN property!\nError-Msg: %s\n",
+                     SDL_GetError());
+    }
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);
 
     g_pWindow = SDL_CreateWindowWithProperties(props);
