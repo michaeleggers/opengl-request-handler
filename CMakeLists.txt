@@ -12,8 +12,13 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 add_subdirectory(dependencies/SDL3)
 
+    find_package(glslang CONFIG REQUIRED)
+
 add_executable(curltest
     main.cpp
+    shader.cpp
+    platform.cpp
+    utils.cpp
     dependencies/glad/src/glad.c
 )
 
@@ -22,6 +27,9 @@ target_link_libraries(curltest
     #PUBLIC CURL::libcurl
     PUBLIC -lc -ldl -lpthread -lwayland-client
     PUBLIC SDL3::SDL3
+    PUBLIC glslang::glslang
+    PUBLIC glslang::SPIRV 
+    PUBLIC glslang::glslang-default-resource-limits
 )
 
 target_include_directories(curltest PUBLIC

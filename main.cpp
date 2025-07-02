@@ -19,11 +19,15 @@
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
 
+#include "shader.h"
+#include "utils.h"
+
 static int                     g_fdServerSocket;
 static SDL_Window*             g_pWindow;
 static SDL_GLContext           g_glContext;
 static SDL_Thread*             g_pRequestHandlerThread;
 static std::queue<std::string> g_EventQueue;
+std::string                    g_BasePath;
 
 static float RandBetween(float min, float max)
 {
@@ -289,6 +293,25 @@ int main(int argc, char** argv)
     {
         SDL_DetachThread(g_pRequestHandlerThread);
         //SDL_Log("Thread returned value: %d", threadReturnValue);
+    }
+
+    // Set path in which to look for assets (shaders etc.)
+    if ( argc > 0 )
+    {
+        g_BasePath = std::string(argv[ 1 ]);
+    }
+    else
+    {
+        g_BasePath = GetExePath();
+    }
+    printf("BaseDir set to: %s\n", g_BasePath.c_str());
+
+    // Load shaders
+    Shader basicShader{};
+    if ( !basicShader.Load("shaders/basic.vert", "shaders/basic.frag", 0) )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create vert/frag shader-pair\n");
+        exit(66);
     }
 
     // Init color
