@@ -380,14 +380,14 @@ int main(int argc, char** argv)
 
 #if 1
     // Create SSBO for particles
-    const size_t          numParticles = 600000;
+    const size_t          numParticles = 10 * 1000000;
     std::vector<Particle> particles{};
     particles.resize(numParticles);
     for ( int i = 0; i < numParticles; i++ )
     {
         Particle* p = &particles[ i ];
         p->pos      = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
-        p->color    = Vec4f{ RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), 1.0f };
+        p->color    = Vec4f{ RandBetween(0.9f, 1.0f), RandBetween(0.7f, 0.9f), RandBetween(0.0f, 0.1f), 1.0f };
         //p.direction
         //= Vec3f{ 0.0f }; //Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
         //p.timeToLiveMs = RandBetween(1000.0f, 10.000f);
@@ -457,11 +457,12 @@ int main(int argc, char** argv)
     bool done = false;
     while ( !done )
     {
-        frameTime    = timeEnd - timeStart;
-        frameTimeSec = double(frameTime) / double(countsPerSecond);
+        frameTime         = timeEnd - timeStart;
+        frameTimeSec      = double(frameTime) / double(countsPerSecond);
+        float frameTimeMs = float(frameTimeSec * 1000.0);
         totalFrameTimeSec += frameTimeSec;
-        float totalFrameTimeMs = float(totalFrameTimeSec * 1000.0f);
-        printf("frameTime (sec): %f\n", frameTimeSec);
+        float totalFrameTimeMs = frameTimeMs;
+        printf("frameTime (ms): %f\n", frameTimeMs);
 
         timeStart = SDL_GetPerformanceCounter();
 
