@@ -193,6 +193,27 @@ bool Shader::Load(const std::string& vertName, const std::string& fragName, uint
     return true;
 }
 
+bool Shader::LoadComputeShader(const std::string& compName)
+{
+    m_ComputeShaderSPIRV = CompileShaderToSPIRV(GLSLANG_STAGE_COMPUTE, compName);
+
+    m_ComputeShader = glCreateShader(GL_COMPUTE_SHADER);
+    glShaderBinary(1,
+                   &m_ComputeShader,
+                   GL_SHADER_BINARY_FORMAT_SPIR_V,
+                   m_ComputeShaderSPIRV.words,
+                   m_ComputeShaderSPIRV.size * sizeof(uint32_t));
+    glSpecializeShader(m_ComputeShader, "main", 0, NULL, NULL);
+
+    m_ShaderProgram = glCreateProgram();
+    glAttachShader(m_ShaderProgram, m_ComputeShader);
+    glLinkProgram(m_ShaderProgram);
+
+    if ( !IsValidProgram() ) return false;
+
+    return true;
+}
+
 bool Shader::IsValidProgram()
 {
     GLint status;

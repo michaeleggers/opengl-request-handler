@@ -22,6 +22,7 @@ class Shader
     ~Shader();
 
     bool Load(const std::string& vertName, const std::string& fragName, uint32_t shaderFeatureBits);
+    bool LoadComputeShader(const std::string& compName);
     bool IsValidProgram();
     void Use();
 

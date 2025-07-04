@@ -350,6 +350,13 @@ int main(int argc, char** argv)
         exit(66);
     }
 
+    Shader compShader{};
+    if ( !compShader.LoadComputeShader("shaders/particles.comp") )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create compute shader!\n");
+        exit(66);
+    }
+
     // Create buffers
     GLuint VAO;
     glCreateVertexArrays(1, &VAO);
