@@ -79,7 +79,7 @@ std::string hkd_GetExePath(void)
 #endif
 
 // FIX: Return filesize *including* null-byte (and comment it that it does so).
-HKD_FileStatus hkd_read_file(char const* filename, HKD_File* out_File)
+HKD_FileStatus hkd_read_file(char const* filename, HKD_FileMode mode, HKD_File* out_File)
 {
     FILE* file = 0;
     file       = fopen(filename, "rb");
@@ -90,12 +90,20 @@ HKD_FileStatus hkd_read_file(char const* filename, HKD_File* out_File)
     }
     fseek(file, 0L, SEEK_END);
     out_File->size = ftell(file);
+    printf("size from ftell: %d\n", out_File->size);
     fseek(file, 0L, SEEK_SET);
-    out_File->data = (uint8_t*)malloc(out_File->size + 1);
+
+    size_t bytesToAlloc = mode == HKD_FILE_ASCII ? out_File->size + 1 : out_File->size;
+    out_File->data      = (uint8_t*)malloc(bytesToAlloc);
+
     fread(out_File->data, sizeof(uint8_t), out_File->size, file);
     fclose(file);
 
-    out_File->data[ out_File->size ] = '\0';
+    if ( mode == HKD_FILE_ASCII )
+    {
+        out_File->data[ out_File->size ] = '\0';
+        out_File->size += 1;
+    }
 
     return HKD_FILE_SUCCESS;
 }

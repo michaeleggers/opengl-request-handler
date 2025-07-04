@@ -19,6 +19,7 @@
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
 
+#include "platform.h"
 #include "shader.h"
 #include "utils.h"
 
@@ -54,6 +55,32 @@ static const std::string HTTP_RESPONSE_STRING
       "insecureHTTPParser:true\r\n"
       "Content-Type: application/json; charset=utf-8\r\n"
       "Connection:close\r\n";
+
+// TODO: Remove later.
+static void PrintBytes(HKD_File file)
+{
+    for ( size_t i = 0; i < file.size; i++ )
+    {
+        if ( file.data[ i ] == '\0' )
+        {
+            printf("\\0"); // Print \0 for null byte
+        }
+        else if ( file.data[ i ] == '\n' )
+        {
+            printf("\\n"); // Print \n for newline character
+        }
+        else if ( file.data[ i ] == '\r' )
+        {
+            printf("\\r"); // Print \r for carriage return character
+        }
+        else
+        {
+            printf("%c", file.data[ i ]); // Print other characters normally
+        }
+    }
+
+    printf("\n");
+}
 
 std::string CreateResponse(const std::string& jsonMsg)
 {

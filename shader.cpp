@@ -24,7 +24,7 @@ GLSL_IncludeLocalCB(void* ctx, const char* header_name, const char* includer_nam
 
     std::string headerFilePath = g_BasePath + "/shaders/" + header_name;
     HKD_File    file{};
-    hkd_read_file(headerFilePath.c_str(), &file);
+    hkd_read_file(headerFilePath.c_str(), HKD_FILE_BINARY, &file);
 
     result->header_name = header_name;
     result->header_data = (char*)malloc(file.size + 1);
@@ -134,7 +134,7 @@ SpirVBinary CompileShaderToSPIRV(glslang_stage_t stage, const std::string& fileN
 {
     std::string shaderFilePath = g_BasePath + fileName;
     HKD_File    shaderCode;
-    if ( hkd_read_file(shaderFilePath.c_str(), &shaderCode) != HKD_FILE_SUCCESS )
+    if ( hkd_read_file(shaderFilePath.c_str(), HKD_FILE_BINARY, &shaderCode) != HKD_FILE_SUCCESS )
     {
         printf("CompileShaderToSPIRV: Could not read file: %s\n", fileName.c_str());
         exit(66); // SEE: sysexits.h
