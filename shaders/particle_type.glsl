@@ -1,7 +1,7 @@
 struct Particle {
     vec3 pos;
-    float padding;
+    float timeToLiveMs;
     vec4 color;
-    //vec3 direction;
-    //float timeToLiveMs;
+    vec3 direction;
+    float speed;
 };

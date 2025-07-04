@@ -4,15 +4,26 @@
 
 #include "particle_type.glsl"
 
-layout(local_size_x = 8, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 layout(std140, binding = 1) buffer particlesSSBO {
     Particle particles[];
 };
 
 void main() {
-    uint width = gl_WorkGroupSize.x * gl_NumWorkGroups.x;
-    uint id = width * gl_GlobalInvocationID.y + gl_GlobalInvocationID.x;
-    //particles[id].pos.x += 0.001f;
+    uint id = gl_GlobalInvocationID.x;
+
+    Particle p = particles[id];
+
+    float speed = p.speed;
+    vec3 pos = p.pos;
+
+    pos += speed * p.direction;
+    //if (pos.x >= 1.0f) {
+    //   pos.x = -1.0f;
+    //}
+
+    particles[id].pos = pos;
+
     //particles[id].pos.x; // particles[id].direction;
 }

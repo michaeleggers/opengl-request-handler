@@ -23,12 +23,17 @@
 #include "shader.h"
 #include "utils.h"
 
-static int                     g_fdServerSocket;
-static SDL_Window*             g_pWindow;
-static SDL_GLContext           g_glContext;
-static SDL_Thread*             g_pRequestHandlerThread;
-static std::queue<std::string> g_EventQueue;
-std::string                    g_BasePath;
+struct Event
+{
+    float timeToLiveMs; // time to run before event gets removed from queue.
+};
+
+static int               g_fdServerSocket;
+static SDL_Window*       g_pWindow;
+static SDL_GLContext     g_glContext;
+static SDL_Thread*       g_pRequestHandlerThread;
+static std::queue<Event> g_EventQueue;
+std::string              g_BasePath;
 
 struct Uniforms
 {
@@ -51,10 +56,10 @@ struct Vec4f
 struct Particle
 {
     Vec3f pos;
-    float padding;
+    float timeToLiveMs;
     Vec4f color;
-    //Vec3f direction;
-    //float timeToLiveMs;
+    Vec3f direction;
+    float speed;
 };
 
 static float RandBetween(float min, float max)
@@ -143,7 +148,7 @@ static int HandleRequests(void* ptr)
         printf("sentBytes: %lu\n", sentBytes);
 
         // Add even to queue
-        g_EventQueue.push({ "event-message" });
+        g_EventQueue.push({ 10000.0f });
     }
 }
 
@@ -380,16 +385,16 @@ int main(int argc, char** argv)
 
 #if 1
     // Create SSBO for particles
-    const size_t          numParticles = 10 * 1000000;
+    const size_t          numParticles = 10 * 1024 * 1024;
     std::vector<Particle> particles{};
     particles.resize(numParticles);
     for ( int i = 0; i < numParticles; i++ )
     {
-        Particle* p = &particles[ i ];
-        p->pos      = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
-        p->color    = Vec4f{ RandBetween(0.9f, 1.0f), RandBetween(0.7f, 0.9f), RandBetween(0.0f, 0.1f), 1.0f };
-        //p.direction
-        //= Vec3f{ 0.0f }; //Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
+        Particle* p  = &particles[ i ];
+        p->pos       = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
+        p->color     = Vec4f{ RandBetween(0.9f, 1.0f), RandBetween(0.7f, 0.9f), RandBetween(0.0f, 0.1f), 1.0f };
+        p->direction = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
+        p->speed     = RandBetween(0.001f, 0.05f);
         //p.timeToLiveMs = RandBetween(1000.0f, 10.000f);
     }
 
@@ -430,12 +435,12 @@ int main(int argc, char** argv)
 
     // Init color
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST);
     glFrontFace(GL_CCW);
     glDisable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glDepthFunc(GL_LESS);
-    glPointSize(2.0f);
+    glPointSize(10.0f);
 
     // Turn off vsync (for now)
     if ( !SDL_GL_SetSwapInterval(0) )
@@ -446,12 +451,14 @@ int main(int argc, char** argv)
     //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Setup timers
-    uint64_t timeStart         = 0;
-    uint64_t countsPerSecond   = SDL_GetPerformanceFrequency();
-    double   frameTimeSec      = 0.0f;
-    double   totalFrameTimeSec = 0.0f;
-    uint64_t frameTime         = 0;
-    uint64_t timeEnd           = 0;
+    uint64_t timeStart             = 0;
+    uint64_t countsPerSecond       = SDL_GetPerformanceFrequency();
+    double   frameTimeSec          = 0.0;
+    double   totalFrameTimeSec     = 0.0;
+    float    totalFrameTimeMs      = 0.0f;
+    uint64_t frameTime             = 0;
+    uint64_t timeEnd               = 0;
+    double   printUpdateIntervalMs = 1000.0;
 
     // Run event loop
     bool done = false;
@@ -461,8 +468,13 @@ int main(int argc, char** argv)
         frameTimeSec      = double(frameTime) / double(countsPerSecond);
         float frameTimeMs = float(frameTimeSec * 1000.0);
         totalFrameTimeSec += frameTimeSec;
-        float totalFrameTimeMs = frameTimeMs;
-        printf("frameTime (ms): %f\n", frameTimeMs);
+        totalFrameTimeMs += frameTimeMs;
+
+        if ( totalFrameTimeMs > printUpdateIntervalMs )
+        {
+            printf("frameTime (ms): %f\n", frameTimeMs);
+            totalFrameTimeMs = 0.0f;
+        }
 
         timeStart = SDL_GetPerformanceCounter();
 
@@ -496,11 +508,9 @@ int main(int argc, char** argv)
 
         // Do game logic, present a frame, etc.
         //
-        if ( !g_EventQueue.empty() )
-        {
-            g_EventQueue.pop();
-            totalFrameTimeSec = 0.0f;
-        }
+
+        glViewport(0, 0, displayMode->w, displayMode->h);
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
         // Update uniforms
         uniforms.runningTimeMs  = totalFrameTimeMs;
@@ -511,23 +521,38 @@ int main(int argc, char** argv)
 
         // Bind particles SSBO
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboParticles);
-// Run Compute shader
-#if 1
-        compShader.Use();
-        //glMemoryBarrier(GL_ALL_BARRIER_BITS);
-        size_t numWorkGroups = (numParticles + 7) / 8;
-        glDispatchCompute(numParticles, 1, 1);
-        //glMemoryBarrier(GL_ALL_BARRIER_BITS);
-#endif
 
-        glViewport(0, 0, displayMode->w, displayMode->h);
-        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+        if ( !g_EventQueue.empty() )
+        {
+            Event& e = g_EventQueue.front();
+            if ( e.timeToLiveMs > 0.0f )
+            {
+                // Run Compute shader
+                {
+                    compShader.Use();
+                    //glMemoryBarrier(GL_ALL_BARRIER_BITS);
+                    size_t localSize     = 64;
+                    size_t numWorkGroups = (numParticles + localSize - 1) / localSize;
+                    glDispatchCompute(numWorkGroups, 1, 1);
+                    //glMemoryBarrier(GL_ALL_BARRIER_BITS);
+                }
 
-        basicShader.Use();
-        glBindVertexArray(VAO);
-        glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniformBuffer);
-        glDrawArrays(GL_POINTS, 0, numParticles);
-        glBindVertexArray(0);
+                // Draw particles
+                {
+                    basicShader.Use();
+                    glBindVertexArray(VAO);
+                    glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniformBuffer);
+                    glDrawArrays(GL_POINTS, 0, numParticles);
+                    glBindVertexArray(0);
+                }
+
+                e.timeToLiveMs -= frameTimeMs;
+            }
+            else
+            {
+                g_EventQueue.pop();
+            }
+        }
 
         SDL_GL_SwapWindow(g_pWindow);
 
