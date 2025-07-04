@@ -1,5 +1,18 @@
 #version 460 core
 
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+#extension GL_GOOGLE_include_directive : require
 
-void main() {}
+#include "particle_type.glsl"
+
+layout(local_size_x = 8, local_size_y = 1, local_size_z = 1) in;
+
+layout(std140, binding = 1) buffer particlesSSBO {
+    Particle particles[];
+};
+
+void main() {
+    uint width = gl_WorkGroupSize.x * gl_NumWorkGroups.x;
+    uint id = width * gl_GlobalInvocationID.y + gl_GlobalInvocationID.x;
+    //particles[id].pos.x += 0.001f;
+    //particles[id].pos.x; // particles[id].direction;
+}

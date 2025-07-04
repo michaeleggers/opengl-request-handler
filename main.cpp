@@ -38,6 +38,25 @@ struct Uniforms
     uint32_t windowHeight;
 };
 
+struct Vec3f
+{
+    float x, y, z;
+};
+
+struct Vec4f
+{
+    float x, y, z, w;
+};
+
+struct Particle
+{
+    Vec3f pos;
+    float padding;
+    Vec4f color;
+    //Vec3f direction;
+    //float timeToLiveMs;
+};
+
 static float RandBetween(float min, float max)
 {
     float range = max - min;
@@ -350,12 +369,34 @@ int main(int argc, char** argv)
         exit(66);
     }
 
+#if 1
     Shader compShader{};
     if ( !compShader.LoadComputeShader("shaders/particles.comp") )
     {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create compute shader!\n");
         exit(66);
     }
+#endif
+
+#if 1
+    // Create SSBO for particles
+    const size_t          numParticles = 600000;
+    std::vector<Particle> particles{};
+    particles.resize(numParticles);
+    for ( int i = 0; i < numParticles; i++ )
+    {
+        Particle* p = &particles[ i ];
+        p->pos      = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
+        p->color    = Vec4f{ RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), RandBetween(0.0f, 1.0f), 1.0f };
+        //p.direction
+        //= Vec3f{ 0.0f }; //Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
+        //p.timeToLiveMs = RandBetween(1000.0f, 10.000f);
+    }
+
+    GLuint ssboParticles;
+    glCreateBuffers(1, &ssboParticles);
+    glNamedBufferStorage(ssboParticles, sizeof(Particle) * numParticles, &particles[ 0 ], 0);
+#endif
 
     // Create buffers
     GLuint VAO;
@@ -388,12 +429,20 @@ int main(int argc, char** argv)
     glNamedBufferData(uniformBuffer, sizeof(Uniforms), &uniforms, GL_DYNAMIC_DRAW);
 
     // Init color
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glEnable(GL_DEPTH_TEST);
     glFrontFace(GL_CCW);
     glDisable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glDepthFunc(GL_LESS);
+    glPointSize(2.0f);
+
+    // Turn off vsync (for now)
+    if ( !SDL_GL_SetSwapInterval(0) )
+    {
+        SDL_Log("Failed to disable vsync!\n");
+    }
+
     //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Setup timers
@@ -412,6 +461,7 @@ int main(int argc, char** argv)
         frameTimeSec = double(frameTime) / double(countsPerSecond);
         totalFrameTimeSec += frameTimeSec;
         float totalFrameTimeMs = float(totalFrameTimeSec * 1000.0f);
+        printf("frameTime (sec): %f\n", frameTimeSec);
 
         timeStart = SDL_GetPerformanceCounter();
 
@@ -458,13 +508,24 @@ int main(int argc, char** argv)
         uniforms.windowHeight   = displayMode->h;
         glNamedBufferSubData(uniformBuffer, 0, sizeof(Uniforms), &uniforms);
 
+        // Bind particles SSBO
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboParticles);
+// Run Compute shader
+#if 1
+        compShader.Use();
+        //glMemoryBarrier(GL_ALL_BARRIER_BITS);
+        size_t numWorkGroups = (numParticles + 7) / 8;
+        glDispatchCompute(numParticles, 1, 1);
+        //glMemoryBarrier(GL_ALL_BARRIER_BITS);
+#endif
+
         glViewport(0, 0, displayMode->w, displayMode->h);
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
         basicShader.Use();
         glBindVertexArray(VAO);
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniformBuffer);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_POINTS, 0, numParticles);
         glBindVertexArray(0);
 
         SDL_GL_SwapWindow(g_pWindow);
