@@ -93,16 +93,20 @@ HKD_FileStatus hkd_read_file(char const* filename, HKD_FileMode mode, HKD_File* 
     printf("size from ftell: %d\n", out_File->size);
     fseek(file, 0L, SEEK_SET);
 
-    out_File->data = (uint8_t*)malloc(out_File->size + 1);
-
-    fread(out_File->data, sizeof(uint8_t), out_File->size, file);
+    // If we read the file as text, include null-byte.
+    if ( mode == HKD_FILE_ASCII )
+    {
+        out_File->data = (uint8_t*)malloc(out_File->size + 1);
+        fread(out_File->data, sizeof(uint8_t), out_File->size, file);
+        out_File->data[ out_File->size ] = '\0';
+        out_File->size += 1;
+    }
+    else
+    {
+        out_File->data = (uint8_t*)malloc(out_File->size);
+        fread(out_File->data, sizeof(uint8_t), out_File->size, file);
+    }
     fclose(file);
-
-    //if ( mode == HKD_FILE_ASCII )
-    //{
-    out_File->data[ out_File->size ] = '\0';
-    //out_File->size += 1;
-    //}
 
     return HKD_FILE_SUCCESS;
 }

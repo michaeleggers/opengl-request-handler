@@ -24,20 +24,21 @@ GLSL_IncludeLocalCB(void* ctx, const char* header_name, const char* includer_nam
 
     std::string headerFilePath = g_BasePath + "/shaders/" + header_name;
     HKD_File    file{};
-    hkd_read_file(headerFilePath.c_str(), HKD_FILE_ASCII, &file);
+    hkd_read_file(headerFilePath.c_str(),
+                  HKD_FILE_BINARY,
+                  &file); // NOTE: Don't include a trailing null-byte as it will trip up glsl.
 
     result->header_name = header_name;
-    result->header_data = (char*)malloc(file.size + 1);
-    memset((void*)(result->header_data), 0, file.size + 1);
+    result->header_data = (char*)malloc(file.size);
+    memset((void*)(result->header_data), 0, file.size);
     memcpy((char*)(result->header_data), (char*)file.data, file.size);
     result->header_length = (size_t)file.size;
 
-    printf("Includer name: %s\n", includer_name);
-    printf("Header name: %s\n", header_name);
-    printf("---- result ----\n");
-    printf("result->header_length: %lu\n", result->header_length);
-    printf("result->header_name: %s\n", result->header_name);
-    printf("result->header_data: %s\n", result->header_data);
+    printf("GLSL: Including file '%s'\n", header_name);
+    //printf("---- result ----\n");
+    //printf("result->header_length: %lu\n", result->header_length);
+    //printf("result->header_name: %s\n", result->header_name);
+    //printf("result->header_data: %s\n", result->header_data);
 
     hkd_destroy_file(&file);
 
@@ -139,7 +140,9 @@ SpirVBinary CompileShaderToSPIRV(glslang_stage_t stage, const std::string& fileN
         printf("CompileShaderToSPIRV: Could not read file: %s\n", fileName.c_str());
         exit(66); // SEE: sysexits.h
     }
-    printf("%.*s\n", shaderCode.size, (char*)shaderCode.data);
+
+    // NOTE: This is pretty cool. Didn't know this is a thing to print as many bytes as you say.
+    //printf("%.*s\n", shaderCode.size, (char*)shaderCode.data);
 
     return CompileShaderToSPIRV_OpenGL(stage, (char*)shaderCode.data, fileName.c_str());
 }
