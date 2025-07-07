@@ -20,12 +20,15 @@ void main() {
 
     Particle p = particles[id];
 
-    if (p.timeToLiveMs > 0.0f) { // only animated if still alive. TODO: 'Remove' from buffer later. Probably use two buffers. 1 for alive particles, one for all particles.
-        float speed = p.speed;
-        vec3 pos = p.pos;
-        pos += speed * p.direction;
-        particles[id].timeToLiveMs -= uniforms.frameTimeMs;
-        particles[id].pos = pos;
-        particles[id].color.a = smoothstep(0.0f, p.constTimeToLiveMs, p.timeToLiveMs);
-    }
+    vec3 pos = p.pos;
+    //if (p.timeToLiveMs > 0.0f) { // only animated if still alive. TODO: 'Remove' from buffer later. Probably use two buffers. 1 for alive particles, one for all particles.
+    float speed = p.speed;
+    pos += speed * p.direction;
+    //particles[id].color.a = smoothstep(0.0f, p.constTimeToLiveMs, p.timeToLiveMs);
+    particles[id].timeToLiveMs -= uniforms.frameTimeMs;
+    //}
+    //memoryBarrier();
+    //barrier();
+
+    particles[id].pos = pos;
 }

@@ -13,6 +13,7 @@
 - [x] Load GLSL code from disk and compile to SPIR-V via glslang.
 - [x] Create uniform buffer to animate shader with CPU-side data.
 - [x] Render a shit-load of particles using a compute-shader.
+- [ ] Investigate possible read/write hazard in compute shader. Weird artifacts appear sometimes.
 - [ ] Use shader program to do some fun stuff when request comes in.
 - [ ] Load external models (OBJ).
 

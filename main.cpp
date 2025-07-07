@@ -150,7 +150,7 @@ static int HandleRequests(void* ptr)
         printf("sentBytes: %lu\n", sentBytes);
 
         // Add even to queue
-        g_EventQueue.push({ 100000.0f });
+        g_EventQueue.push({ 10000.0f });
     }
 }
 
@@ -387,7 +387,7 @@ int main(int argc, char** argv)
 
 #if 1
     // Create SSBO for particles
-    const size_t          numParticles = 10 * 1024 * 1024;
+    const size_t          numParticles = 6 * 1024 * 1024;
     std::vector<Particle> particles{};
     particles.resize(numParticles);
     for ( int i = 0; i < numParticles; i++ )
@@ -396,7 +396,7 @@ int main(int argc, char** argv)
         p->pos               = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
         p->color             = Vec4f{ RandBetween(0.9f, 1.0f), RandBetween(0.7f, 0.9f), RandBetween(0.0f, 0.1f), 1.0f };
         p->direction         = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
-        p->speed             = RandBetween(0.001f, 0.05f);
+        p->speed             = RandBetween(0.01f, 0.05f);
         float ttl            = RandBetween(10000.0f, 20000.0f);
         p->timeToLiveMs      = ttl;
         p->constTimeToLiveMs = ttl;
