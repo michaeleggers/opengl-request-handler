@@ -39,6 +39,7 @@ struct Uniforms
 {
     float    runningTimeMs;
     float    runningTimeSec;
+    float    frameTimeMs;
     uint32_t windowWidth;
     uint32_t windowHeight;
 };
@@ -60,6 +61,7 @@ struct Particle
     Vec4f color;
     Vec3f direction;
     float speed;
+    float constTimeToLiveMs;
 };
 
 static float RandBetween(float min, float max)
@@ -148,7 +150,7 @@ static int HandleRequests(void* ptr)
         printf("sentBytes: %lu\n", sentBytes);
 
         // Add even to queue
-        g_EventQueue.push({ 10000.0f });
+        g_EventQueue.push({ 100000.0f });
     }
 }
 
@@ -390,12 +392,14 @@ int main(int argc, char** argv)
     particles.resize(numParticles);
     for ( int i = 0; i < numParticles; i++ )
     {
-        Particle* p  = &particles[ i ];
-        p->pos       = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
-        p->color     = Vec4f{ RandBetween(0.9f, 1.0f), RandBetween(0.7f, 0.9f), RandBetween(0.0f, 0.1f), 1.0f };
-        p->direction = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
-        p->speed     = RandBetween(0.001f, 0.05f);
-        //p.timeToLiveMs = RandBetween(1000.0f, 10.000f);
+        Particle* p          = &particles[ i ];
+        p->pos               = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
+        p->color             = Vec4f{ RandBetween(0.9f, 1.0f), RandBetween(0.7f, 0.9f), RandBetween(0.0f, 0.1f), 1.0f };
+        p->direction         = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
+        p->speed             = RandBetween(0.001f, 0.05f);
+        float ttl            = RandBetween(10000.0f, 20000.0f);
+        p->timeToLiveMs      = ttl;
+        p->constTimeToLiveMs = ttl;
     }
 
     GLuint ssboParticles;
@@ -515,6 +519,7 @@ int main(int argc, char** argv)
         // Update uniforms
         uniforms.runningTimeMs  = totalFrameTimeMs;
         uniforms.runningTimeSec = totalFrameTimeSec;
+        uniforms.frameTimeMs    = frameTimeMs;
         uniforms.windowWidth    = displayMode->w;
         uniforms.windowHeight   = displayMode->h;
         glNamedBufferSubData(uniformBuffer, 0, sizeof(Uniforms), &uniforms);
@@ -530,11 +535,11 @@ int main(int argc, char** argv)
                 // Run Compute shader
                 {
                     compShader.Use();
-                    //glMemoryBarrier(GL_ALL_BARRIER_BITS);
+                    glMemoryBarrier(GL_ALL_BARRIER_BITS);
                     size_t localSize     = 64;
                     size_t numWorkGroups = (numParticles + localSize - 1) / localSize;
                     glDispatchCompute(numWorkGroups, 1, 1);
-                    //glMemoryBarrier(GL_ALL_BARRIER_BITS);
+                    glMemoryBarrier(GL_ALL_BARRIER_BITS);
                 }
 
                 // Draw particles

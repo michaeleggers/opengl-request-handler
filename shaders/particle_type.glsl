@@ -4,4 +4,5 @@ struct Particle {
     vec4 color;
     vec3 direction;
     float speed;
+    float constTimeToLiveMs;
 };

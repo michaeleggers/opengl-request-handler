@@ -3,8 +3,13 @@
 #extension GL_GOOGLE_include_directive : require
 
 #include "particle_type.glsl"
+#include "uniforms.glsl"
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(std140, binding = 0) uniform UniformBuffer {
+    UniformBufferStruct uniforms;
+};
 
 layout(std140, binding = 1) buffer particlesSSBO {
     Particle particles[];
@@ -15,15 +20,12 @@ void main() {
 
     Particle p = particles[id];
 
-    float speed = p.speed;
-    vec3 pos = p.pos;
-
-    pos += speed * p.direction;
-    //if (pos.x >= 1.0f) {
-    //   pos.x = -1.0f;
-    //}
-
-    particles[id].pos = pos;
-
-    //particles[id].pos.x; // particles[id].direction;
+    if (p.timeToLiveMs > 0.0f) { // only animated if still alive. TODO: 'Remove' from buffer later. Probably use two buffers. 1 for alive particles, one for all particles.
+        float speed = p.speed;
+        vec3 pos = p.pos;
+        pos += speed * p.direction;
+        particles[id].timeToLiveMs -= uniforms.frameTimeMs;
+        particles[id].pos = pos;
+        particles[id].color.a = smoothstep(0.0f, p.constTimeToLiveMs, p.timeToLiveMs);
+    }
 }
