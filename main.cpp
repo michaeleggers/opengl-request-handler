@@ -341,7 +341,7 @@ int main(int argc, char** argv)
     SDL_GLContext context = SDL_GL_CreateContext(g_pWindow);
     int           version = gladLoadGL();
 
-#if 1
+#if 0
     // Set window hittest callback
     if ( !SDL_SetWindowHitTest(g_pWindow, WindowHittestCallback, nullptr) )
     {
