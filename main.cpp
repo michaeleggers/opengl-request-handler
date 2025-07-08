@@ -330,11 +330,12 @@ int main(int argc, char** argv)
     }
 
     // Set window size to size of Desktop.
+    // Set window size initially to something very small and move it out of bounds.
     const SDL_DisplayMode* displayMode
         = SDL_GetCurrentDisplayMode(*displayIDs); // TODO: might not be the display we want.
     printf("Display size: %d, %d\n", displayMode->w, displayMode->h);
-    SDL_SetWindowSize(g_pWindow, displayMode->w, displayMode->h);
-    SDL_SetWindowPosition(g_pWindow, 0, 0);
+    SDL_SetWindowSize(g_pWindow, 1, 1);
+    SDL_SetWindowPosition(g_pWindow, displayMode->w, displayMode->h);
     //SDL_SetWindowFullscreen(g_pWindow, true);
 
     SDL_GLContext context = SDL_GL_CreateContext(g_pWindow);
