@@ -26,14 +26,8 @@
 struct Event
 {
     float timeToLiveMs; // time to run before event gets removed from queue.
+    bool  shouldInitParticles;
 };
-
-static int               g_fdServerSocket;
-static SDL_Window*       g_pWindow;
-static SDL_GLContext     g_glContext;
-static SDL_Thread*       g_pRequestHandlerThread;
-static std::queue<Event> g_EventQueue;
-std::string              g_BasePath;
 
 struct Uniforms
 {
@@ -63,6 +57,19 @@ struct Particle
     float speed;
     float constTimeToLiveMs;
 };
+
+// Nice globals
+static int           g_fdServerSocket;
+static SDL_Window*   g_pWindow;
+static SDL_GLContext g_glContext;
+static SDL_Thread*   g_pRequestHandlerThread;
+std::string          g_BasePath;
+
+// Particles
+static std::queue<Event>     g_EventQueue;
+static size_t                g_NumParticles = 6 * 1024 * 1024;
+static std::vector<Particle> g_Particles{};
+static GLuint                g_SSBO_Particles;
 
 static float RandBetween(float min, float max)
 {
@@ -124,6 +131,48 @@ static SDL_HitTestResult WindowHittestCallback(SDL_Window* win, const SDL_Point*
     return SDL_HITTEST_DRAGGABLE; /**< Region is normal. No special properties. */
 }
 
+static SDL_Window* CreateNewSubWindow(const SDL_Window* pParentWindow)
+{
+    SDL_Window* pWindow;
+
+    SDL_PropertiesID props = SDL_CreateProperties();
+    if ( props == 0 )
+    {
+        SDL_Log("Unable to create properties: %s", SDL_GetError());
+        return 0;
+    }
+
+    // Assume the following calls succeed
+    SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "I am the subwindow.");
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, false);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, 640);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 480);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, false);
+    if ( !SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true) )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR,
+                     "Failed to apply SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN property!\nError-Msg: %s\n",
+                     SDL_GetError());
+    }
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);
+
+    pWindow = SDL_CreateWindowWithProperties(props);
+    if ( !pWindow )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create SDL3 Window!\nError-Msg: %s\n", SDL_GetError());
+        exit(66);
+    }
+    if ( !SDL_SetWindowParent(pWindow, g_pWindow) )
+    {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not set parent window!\nError-Msg: %s\n", SDL_GetError());
+        exit(66);
+    }
+
+    return pWindow;
+}
+
 static int HandleRequests(void* ptr)
 {
     while ( 1 )
@@ -149,8 +198,14 @@ static int HandleRequests(void* ptr)
         size_t sentBytes = send(newsockfd, res.data(), responseSize, 0);
         printf("sentBytes: %lu\n", sentBytes);
 
+        //SDL_Window* pSubWindow = CreateNewSubWindow(g_pWindow);
+
         // Add even to queue
-        g_EventQueue.push({ 10000.0f });
+        if ( g_EventQueue.empty() ) // HACK: Multiple events trip up the program atm.
+        {
+            g_EventQueue.push({ 10000.0f, true }); // TODO: Make TTL of emitter configurable.
+            printf("Added new event to queue.\n");
+        }
     }
 }
 
@@ -204,6 +259,7 @@ int main(int argc, char** argv)
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 480);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, false);
     if ( !SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, true) )
     {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR,
@@ -387,12 +443,11 @@ int main(int argc, char** argv)
 
 #if 1
     // Create SSBO for particles
-    const size_t          numParticles = 6 * 1024 * 1024;
-    std::vector<Particle> particles{};
-    particles.resize(numParticles);
-    for ( int i = 0; i < numParticles; i++ )
+    // g_NumParticles = 6 * 1024 * 1024;
+    g_Particles.resize(g_NumParticles);
+    for ( int i = 0; i < g_NumParticles; i++ )
     {
-        Particle* p          = &particles[ i ];
+        Particle* p          = &g_Particles[ i ];
         p->pos               = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
         p->color             = Vec4f{ RandBetween(0.9f, 1.0f), RandBetween(0.7f, 0.9f), RandBetween(0.0f, 0.1f), 1.0f };
         p->direction         = Vec3f{ RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f), RandBetween(-1.0f, 1.0f) };
@@ -402,9 +457,9 @@ int main(int argc, char** argv)
         p->constTimeToLiveMs = ttl;
     }
 
-    GLuint ssboParticles;
-    glCreateBuffers(1, &ssboParticles);
-    glNamedBufferStorage(ssboParticles, sizeof(Particle) * numParticles, &particles[ 0 ], 0);
+    glCreateBuffers(1, &g_SSBO_Particles);
+    glNamedBufferStorage(
+        g_SSBO_Particles, sizeof(Particle) * g_NumParticles, &g_Particles[ 0 ], GL_DYNAMIC_STORAGE_BIT);
 #endif
 
     // Create buffers
@@ -525,10 +580,15 @@ int main(int argc, char** argv)
         glNamedBufferSubData(uniformBuffer, 0, sizeof(Uniforms), &uniforms);
 
         // Bind particles SSBO
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboParticles);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, g_SSBO_Particles);
 
         if ( !g_EventQueue.empty() )
         {
+            //SDL_ShowWindow(g_pWindow);
+            //printf("Display size: %d, %d\n", displayMode->w, displayMode->h);
+            SDL_SetWindowSize(g_pWindow, displayMode->w, displayMode->h);
+            SDL_SetWindowPosition(g_pWindow, 0, 0);
+
             Event& e = g_EventQueue.front();
             if ( e.timeToLiveMs > 0.0f )
             {
@@ -537,7 +597,7 @@ int main(int argc, char** argv)
                     compShader.Use();
                     glMemoryBarrier(GL_ALL_BARRIER_BITS);
                     size_t localSize     = 64;
-                    size_t numWorkGroups = (numParticles + localSize - 1) / localSize;
+                    size_t numWorkGroups = (g_NumParticles + localSize - 1) / localSize;
                     glDispatchCompute(numWorkGroups, 1, 1);
                     glMemoryBarrier(GL_ALL_BARRIER_BITS);
                 }
@@ -547,7 +607,7 @@ int main(int argc, char** argv)
                     basicShader.Use();
                     glBindVertexArray(VAO);
                     glBindBufferBase(GL_UNIFORM_BUFFER, 0, uniformBuffer);
-                    glDrawArrays(GL_POINTS, 0, numParticles);
+                    glDrawArrays(GL_POINTS, 0, g_NumParticles);
                     glBindVertexArray(0);
                 }
 
@@ -555,6 +615,11 @@ int main(int argc, char** argv)
             }
             else
             {
+                //printf("Display size: %d, %d\n", displayMode->w, displayMode->h);
+                SDL_SetWindowSize(g_pWindow, 1, 1);
+                SDL_SetWindowPosition(g_pWindow, displayMode->w, displayMode->h);
+                glNamedBufferSubData(g_SSBO_Particles, 0, sizeof(Particle) * g_NumParticles, &g_Particles[ 0 ]);
+                //SDL_HideWindow(g_pWindow);
                 g_EventQueue.pop();
             }
         }
@@ -568,6 +633,7 @@ int main(int argc, char** argv)
 
     // Shutdown
     SDL_GL_DestroyContext(g_glContext);
+    SDL_DestroyProperties(props);
     SDL_DestroyWindow(g_pWindow);
     SDL_Quit();
 
