@@ -502,10 +502,10 @@ int main(int argc, char** argv)
     glDepthFunc(GL_LESS);
     glPointSize(10.0f);
 
-    // Turn off vsync (for now)
-    if ( !SDL_GL_SetSwapInterval(0) )
+    // Turn on vsync to not consume a ton of cpu cycles
+    if ( !SDL_GL_SetSwapInterval(1) )
     {
-        SDL_Log("Failed to disable vsync!\n");
+        SDL_Log("Failed to enable vsync!\n");
     }
 
     //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
