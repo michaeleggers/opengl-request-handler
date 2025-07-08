@@ -1,8 +1,15 @@
 # Server that listens on incoming requests and plays some graphics on the desktop.
 
-## WIP! 
+## What it does
 
-- As of now, only (very basic) request handling is in place.
+This program listens on port `8081` for incoming requests. If a request comes in
+it blows a ton of confetti on your desktop using a compute-shader on your GPU.
+
+## How is it useful?
+
+Well. *Usefulness* is a very subjective term. I use it so that
+I get notified when a chat-message from twitch comes in using this little program:
+https://github.com/michaeleggers/obs-twitch-bot.
 
 ## TODOs
 
@@ -13,8 +20,8 @@
 - [x] Load GLSL code from disk and compile to SPIR-V via glslang.
 - [x] Create uniform buffer to animate shader with CPU-side data.
 - [x] Render a shit-load of particles using a compute-shader.
+- [ ] Allow multiple events to be played at the same time.
 - [ ] Investigate possible read/write hazard in compute shader. Weird artifacts appear sometimes.
-- [ ] Use shader program to do some fun stuff when request comes in.
 - [ ] Load external models (OBJ).
 
 ## Build requirements
@@ -38,5 +45,14 @@ cp -r shaders bin/
 ```bash
 ./curltest /home/username/repos/opengl-request-handler/
 ```
+
+### Wayland
+
+Start the program with
+```
+SDL_VIDEODRIVER=x11 ./curltest
+```
+Otherwise the window will not be placed as the top-most one.
+
 
 
