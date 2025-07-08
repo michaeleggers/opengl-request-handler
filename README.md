@@ -43,13 +43,13 @@ cp -r shaders bin/
 **or** you pass the base-directory as a commandline-argument eg:
 
 ```bash
-./curltest /home/username/repos/opengl-request-handler/
+./curltest /home/<usename>/<...>/opengl-request-handler/
 ```
 
 ### Wayland
 
 Start the program with
-```
+```bash
 SDL_VIDEODRIVER=x11 ./curltest
 ```
 Otherwise the window will not be placed as the top-most one.
